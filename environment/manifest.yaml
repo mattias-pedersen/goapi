@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golangapi
+  namespace: webapp
+  labels:
+    app: golangapi
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: golangapi
+  template:
+    metadata:
+      labels:
+        app: golangapi
+    spec:
+      containers:
+        - name: golangapi
+          image: blobbylight/goapi:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cluster-ingress
+  namespace: webapp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx-custom
+  tls:
+  - hosts:
+    - api.kubehome.dev
+    secretName: api-kubehome-dev
+  rules:
+  - host: api.kubehome.dev
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: golangapi-service
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: golangapi-service
+  namespace: webapp
+spec:
+  selector:
+    app: golangapi
+  ports:
+    - protocol: TCP
+      name: "http"
+      port: 80
+      targetPort: 8080
+    - protocol: TCP
+      name: "https"
+      port: 443
+      targetPort: 443
+  type: ClusterIP
